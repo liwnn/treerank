@@ -267,11 +267,7 @@ func (t *RBTreeRank) search(x *node, item Item) *node {
 	return x
 }
 
-func (t *RBTreeRank) Delete(item Item) (removeItem Item) {
-	if item == nil {
-		return nil
-	}
-	key := item.Key()
+func (t *RBTreeRank) Delete(key string) (removeItem Item) {
 	n := t.dict[key]
 	if n == nil {
 		return nil
@@ -431,8 +427,8 @@ func (t *RBTreeRank) NewAscendIterator() *Iterator {
 }
 
 // Rank return 1-based rank or 0 if not exist
-func (t *RBTreeRank) Rank(item Item, reverse bool) (count int) {
-	n := t.dict[item.Key()]
+func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
+	n := t.dict[key]
 	if n == nil {
 		return -1
 	}
@@ -444,7 +440,7 @@ func (t *RBTreeRank) Rank(item Item, reverse bool) (count int) {
 			}
 			return count + x.left.count + 1
 		}
-		if x.item.Less(item) {
+		if x.item.Less(n.item) {
 			count += x.count - x.right.count
 			x = x.right
 		} else {

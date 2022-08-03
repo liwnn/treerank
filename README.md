@@ -36,7 +36,7 @@ func main() {
 	tr.Add(User{Name: "Beaty", Score: 66})
 
 	// Rank
-	rank := tr.Rank(User{Name: "Hurst"}, true)
+	rank := tr.Rank("Hurst", true)
 	fmt.Printf("Hurst's rank is %v\n", rank) // expected 2
 
 	// Range
@@ -46,10 +46,10 @@ func main() {
 	}
 
 	// Delete
-	tr.Delete(User{Name: "Peek"})
+	tr.Delete("Peek")
 
 	// Rank
-	rank = tr.Rank(User{Name: "Hurst"}, true)
+	rank = tr.Rank("Hurst", true)
 	fmt.Printf("Hurst's rank is %v\n", rank) // expected 1
 }
 

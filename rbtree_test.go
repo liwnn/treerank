@@ -37,10 +37,10 @@ func TestRBtreeRank(t *testing.T) {
 			tr.Add(v)
 		}
 		for _, v := range perm(treeSize) {
-			if r := tr.Rank(v, false); r != int(v)+1 {
+			if r := tr.Rank(v.Key(), false); r != int(v)+1 {
 				t.Error("rank failed")
 			}
-			if r := tr.Rank(v, true); r != int(treeSize-v) {
+			if r := tr.Rank(v.Key(), true); r != int(treeSize-v) {
 				t.Error("rank failed")
 			}
 		}
@@ -54,10 +54,10 @@ func TestRBtreeRank(t *testing.T) {
 		}
 
 		for i := 0; i < treeSize/2; i++ {
-			tr.Delete(Int(i))
+			tr.Delete(Int(i).Key())
 		}
 		for i := treeSize + 1; i < treeSize; i++ {
-			if r := tr.Rank(Int(i), false); r != i-treeSize/2 {
+			if r := tr.Rank(Int(i).Key(), false); r != i-treeSize/2 {
 				t.Error("rank failed")
 			}
 		}
@@ -115,7 +115,7 @@ func BenchmarkDeleteInsert(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tr.Delete(insertP[i%benchmarkTreeSize])
+		tr.Delete(insertP[i%benchmarkTreeSize].Key())
 		tr.Add(insertP[i%benchmarkTreeSize])
 	}
 }
@@ -134,7 +134,7 @@ func BenchmarkDelete(b *testing.B) {
 		}
 		b.StartTimer()
 		for _, item := range removeP {
-			tr.Delete(item)
+			tr.Delete(item.Key())
 			i++
 			if i >= b.N {
 				return
