@@ -148,6 +148,10 @@ func (t *RBTreeRank) Add(item Item) {
 		panic("nil item is not allowed in RBTree")
 	}
 
+	t.insert(item)
+}
+
+func (t *RBTreeRank) insert(item Item) {
 	key := item.Key()
 	n, ok := t.dict[key]
 	if ok {
