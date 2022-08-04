@@ -154,10 +154,6 @@ func (t *RBTreeRank) Add(item Item) {
 		t.delete(n)
 	}
 
-	t.insert(item)
-}
-
-func (t *RBTreeRank) insert(item Item) *node {
 	y := t.nil
 	insertLeft := true
 	for x := t.root; x != t.nil; {
@@ -186,13 +182,12 @@ func (t *RBTreeRank) insert(item Item) *node {
 	z.color = RED
 	z.count = 1
 	t.length++
-	t.dict[z.item.Key()] = z
+	t.dict[key] = z
 
 	for p := z.p; p != t.nil; p = p.p {
 		p.count++
 	}
 	t.insertFixup(z)
-	return z
 }
 
 func (t *RBTreeRank) insertFixup(z *node) {
