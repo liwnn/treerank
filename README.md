@@ -2,6 +2,7 @@
 This Go package provides an implementation of ranking-list based on red-black tree. It is in-memory-only and does not store any data. 
 
 ## Usage
+All you have to do is to implement a comparison function Less(Item) bool for your Item which will be store in the tree, here are some examples.
 ``` go
 package main
 
@@ -31,9 +32,9 @@ func main() {
 	tr := treerank.New()
 
 	// Add
-	tr.Add(User{Name: "Hurst", Score: 88})
-	tr.Add(User{Name: "Peek", Score: 100})
-	tr.Add(User{Name: "Beaty", Score: 66})
+	tr.Add("Hurst", User{Name: "Hurst", Score: 88})
+	tr.Add("Peek", User{Name: "Peek", Score: 100})
+	tr.Add("Beaty", User{Name: "Beaty", Score: 66})
 
 	// Rank
 	rank := tr.Rank("Hurst", true)
@@ -52,7 +53,6 @@ func main() {
 	rank = tr.Rank("Hurst", true)
 	fmt.Printf("Hurst's rank is %v\n", rank) // expected 1
 }
-
 ```
 Output:
 ```

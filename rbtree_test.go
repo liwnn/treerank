@@ -3,9 +3,14 @@ package treerank
 import (
 	"math/rand"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 )
+
+func (a Int) Key() string {
+	return strconv.Itoa(int(a))
+}
 
 func init() {
 	seed := time.Now().Unix()
@@ -34,7 +39,7 @@ func TestRBtreeRank(t *testing.T) {
 	tr := New()
 	for i := 0; i < 10; i++ {
 		for _, v := range perm(treeSize) {
-			tr.Add(v)
+			tr.Add(v.Key(), v)
 		}
 		for _, v := range perm(treeSize) {
 			if r := tr.Rank(v.Key(), false); r != int(v)+1 {
@@ -74,7 +79,7 @@ func BenchmarkInsert(b *testing.B) {
 	for i < b.N {
 		tr := New()
 		for _, item := range insertP {
-			tr.Add(item)
+			tr.Add(item.Key(), item)
 			i++
 			if i >= b.N {
 				return
@@ -93,11 +98,11 @@ func BenchmarkSearch(b *testing.B) {
 		b.StopTimer()
 		tr := New()
 		for _, v := range insertP {
-			tr.Add(v)
+			tr.Add(v.Key(), v)
 		}
 		b.StartTimer()
 		for _, item := range searchP {
-			tr.Search(item)
+			tr.Search(item.Key())
 			i++
 			if i >= b.N {
 				return
@@ -111,12 +116,13 @@ func BenchmarkDeleteInsert(b *testing.B) {
 	insertP := perm(benchmarkTreeSize)
 	tr := New()
 	for _, item := range insertP {
-		tr.Add(item)
+		tr.Add(item.Key(), item)
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tr.Delete(insertP[i%benchmarkTreeSize].Key())
-		tr.Add(insertP[i%benchmarkTreeSize])
+		item := insertP[i%benchmarkTreeSize]
+		tr.Add(item.Key(), item)
 	}
 }
 
@@ -130,7 +136,7 @@ func BenchmarkDelete(b *testing.B) {
 		b.StopTimer()
 		tr := New()
 		for _, v := range insertP {
-			tr.Add(v)
+			tr.Add(v.Key(), v)
 		}
 		b.StartTimer()
 		for _, item := range removeP {

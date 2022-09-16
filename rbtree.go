@@ -2,7 +2,6 @@ package treerank
 
 import (
 	"fmt"
-	"strconv"
 )
 
 const (
@@ -10,7 +9,6 @@ const (
 )
 
 type Item interface {
-	Key() string
 	Less(than Item) bool
 }
 
@@ -143,19 +141,18 @@ func (t *RBTreeRank) rightRotate(y *node) {
 	y.p = x
 }
 
-func (t *RBTreeRank) Add(item Item) {
+func (t *RBTreeRank) Add(key string, item Item) {
 	if item == nil {
 		panic("nil item is not allowed in RBTree")
 	}
 
-	t.insert(item)
+	t.insert(key, item)
 }
 
-func (t *RBTreeRank) insert(item Item) {
-	key := item.Key()
+func (t *RBTreeRank) insert(key string, item Item) {
 	n, ok := t.dict[key]
 	if ok {
-		t.delete(n)
+		t.delete(key, n)
 	}
 
 	y := t.nil
@@ -246,8 +243,8 @@ func (t *RBTreeRank) transplant(u *node, v *node) {
 	v.p = u.p
 }
 
-func (t *RBTreeRank) Search(item Item) Item {
-	if node, ok := t.dict[item.Key()]; ok {
+func (t *RBTreeRank) Search(key string) Item {
+	if node, ok := t.dict[key]; ok {
 		return node.item
 	}
 	return nil
@@ -272,11 +269,11 @@ func (t *RBTreeRank) Delete(key string) (removeItem Item) {
 		return nil
 	}
 	removeItem = n.item
-	t.delete(n)
+	t.delete(key, n)
 	return
 }
 
-func (t *RBTreeRank) delete(z *node) {
+func (t *RBTreeRank) delete(key string, z *node) {
 	var y = z
 	yOriginalColor := y.color
 	var x *node
@@ -313,7 +310,7 @@ func (t *RBTreeRank) delete(z *node) {
 		y.count = z.count
 	}
 	t.length--
-	delete(t.dict, z.item.Key())
+	delete(t.dict, key)
 	t.freelist.freeNode(z)
 
 	if yOriginalColor == BLACK {
@@ -513,9 +510,6 @@ type Int int
 
 func (a Int) Less(b Item) bool {
 	return a < b.(Int)
-}
-func (a Int) Key() string {
-	return strconv.Itoa(int(a))
 }
 
 // PrintTree 打印树
