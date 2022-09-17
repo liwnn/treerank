@@ -41,6 +41,9 @@ func TestRBtreeRank(t *testing.T) {
 		for _, v := range perm(treeSize) {
 			tr.Add(v.Key(), v)
 		}
+		if tr.Len() != treeSize {
+			t.Errorf("Len is %v, but need %v", treeSize, tr.Len())
+		}
 		for _, v := range perm(treeSize) {
 			if r := tr.Rank(v.Key(), false); r != int(v)+1 {
 				t.Error("rank failed")
@@ -70,6 +73,16 @@ func TestRBtreeRank(t *testing.T) {
 }
 
 const benchmarkTreeSize = 10000
+
+func BenchmarkAdd(b *testing.B) {
+	zs := New()
+	items := perm(benchmarkTreeSize)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		item := items[i%benchmarkTreeSize]
+		zs.Add(item.Key(), item)
+	}
+}
 
 func BenchmarkInsert(b *testing.B) {
 	b.StopTimer()

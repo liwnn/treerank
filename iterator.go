@@ -1,7 +1,7 @@
 package treerank
 
 type Iterator struct {
-	t *RBTreeRank
+	t *RBTree
 	x *node
 }
 

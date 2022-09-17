@@ -1,13 +1,11 @@
+// Package treerank implements ranking-list based on red-black tree.
 package treerank
-
-import (
-	"fmt"
-)
 
 const (
 	DefaultFreeListSize = 32
 )
 
+// Item represents a single object in the set.
 type Item interface {
 	Less(than Item) bool
 }
@@ -60,34 +58,21 @@ func (f *FreeList) freeNode(n *node) (out bool) {
 	return
 }
 
-type RBTreeRank struct {
+type RBTree struct {
 	root     *node
 	nil      *node
 	freelist *FreeList
 	length   int
-	dict     map[string]*node
 }
 
-func New() *RBTreeRank {
-	t := &RBTreeRank{
-		nil: &node{
-			color: BLACK,
-		},
-		freelist: NewFreeList(DefaultFreeListSize),
-		dict:     make(map[string]*node),
-	}
-	t.root = t.nil
-	return t
-}
-
-/*
-   x               y
-  / \             / \
- a   y    ->     x	 c
-    / \         / \
-   b   c       a   b
-*/
-func (t *RBTreeRank) leftRotate(x *node) {
+//	 x               y
+//	/ \             / \
+//
+// a   y    ->     x   c
+//
+//	 / \         / \
+//	b   c       a   b
+func (t *RBTree) leftRotate(x *node) {
 	y := x.right
 	x.count = x.left.count + y.left.count + 1
 	y.count = x.count + y.right.count + 1
@@ -111,14 +96,13 @@ func (t *RBTreeRank) leftRotate(x *node) {
 	x.p = y
 }
 
-/*
-    y  	       x
-   / \        / \
-  x	  c  ->  a   y
- / \            / \
-a   b          b   c
-*/
-func (t *RBTreeRank) rightRotate(y *node) {
+//	   y          x
+//	  / \        / \
+//	 x   c  ->  a   y
+//	/ \            / \
+//
+// a   b          b   c
+func (t *RBTree) rightRotate(y *node) {
 	x := y.left
 
 	y.count = x.right.count + y.right.count + 1
@@ -141,20 +125,7 @@ func (t *RBTreeRank) rightRotate(y *node) {
 	y.p = x
 }
 
-func (t *RBTreeRank) Add(key string, item Item) {
-	if item == nil {
-		panic("nil item is not allowed in RBTree")
-	}
-
-	t.insert(key, item)
-}
-
-func (t *RBTreeRank) insert(key string, item Item) {
-	n, ok := t.dict[key]
-	if ok {
-		t.delete(key, n)
-	}
-
+func (t *RBTree) insert(item Item) *node {
 	y := t.nil
 	insertLeft := true
 	for x := t.root; x != t.nil; {
@@ -183,15 +154,15 @@ func (t *RBTreeRank) insert(key string, item Item) {
 	z.color = RED
 	z.count = 1
 	t.length++
-	t.dict[key] = z
 
 	for p := z.p; p != t.nil; p = p.p {
 		p.count++
 	}
 	t.insertFixup(z)
+	return z
 }
 
-func (t *RBTreeRank) insertFixup(z *node) {
+func (t *RBTree) insertFixup(z *node) {
 	for z.p.color == RED {
 		if z.p == z.p.p.left { // z的父节点是左节点
 			y := z.p.p.right
@@ -232,7 +203,7 @@ func (t *RBTreeRank) insertFixup(z *node) {
 }
 
 // v替换u
-func (t *RBTreeRank) transplant(u *node, v *node) {
+func (t *RBTree) transplant(u *node, v *node) {
 	if u.p == t.nil {
 		t.root = v
 	} else if u.p.left == u {
@@ -243,14 +214,7 @@ func (t *RBTreeRank) transplant(u *node, v *node) {
 	v.p = u.p
 }
 
-func (t *RBTreeRank) Search(key string) Item {
-	if node, ok := t.dict[key]; ok {
-		return node.item
-	}
-	return nil
-}
-
-func (t *RBTreeRank) search(x *node, item Item) *node {
+func (t *RBTree) search(x *node, item Item) *node {
 	for x != t.nil {
 		if item.Less(x.item) {
 			x = x.left
@@ -263,17 +227,7 @@ func (t *RBTreeRank) search(x *node, item Item) *node {
 	return x
 }
 
-func (t *RBTreeRank) Delete(key string) (removeItem Item) {
-	n := t.dict[key]
-	if n == nil {
-		return nil
-	}
-	removeItem = n.item
-	t.delete(key, n)
-	return
-}
-
-func (t *RBTreeRank) delete(key string, z *node) {
+func (t *RBTree) delete(key string, z *node) {
 	var y = z
 	yOriginalColor := y.color
 	var x *node
@@ -310,7 +264,6 @@ func (t *RBTreeRank) delete(key string, z *node) {
 		y.count = z.count
 	}
 	t.length--
-	delete(t.dict, key)
 	t.freelist.freeNode(z)
 
 	if yOriginalColor == BLACK {
@@ -318,21 +271,21 @@ func (t *RBTreeRank) delete(key string, z *node) {
 	}
 }
 
-func (t *RBTreeRank) minimum(x *node) *node {
+func (t *RBTree) minimum(x *node) *node {
 	for x.left != t.nil {
 		x = x.left
 	}
 	return x
 }
 
-func (t *RBTreeRank) maximum(x *node) *node {
+func (t *RBTree) maximum(x *node) *node {
 	for x.right != t.nil {
 		x = x.right
 	}
 	return x
 }
 
-func (t *RBTreeRank) deleteFixup(x *node) {
+func (t *RBTree) deleteFixup(x *node) {
 	for x != t.root && x.color == BLACK {
 		if x == x.p.left {
 			w := x.p.right
@@ -390,7 +343,7 @@ func (t *RBTreeRank) deleteFixup(x *node) {
 	x.color = BLACK
 }
 
-func (t *RBTreeRank) successor(x *node) *node {
+func (t *RBTree) successor(x *node) *node {
 	if x.right != t.nil {
 		return t.minimum(x.right)
 	}
@@ -402,7 +355,7 @@ func (t *RBTreeRank) successor(x *node) *node {
 	return y
 }
 
-func (t *RBTreeRank) predecessor(x *node) *node {
+func (t *RBTree) predecessor(x *node) *node {
 	if x.left != t.nil {
 		return t.maximum(x.left)
 	}
@@ -414,27 +367,11 @@ func (t *RBTreeRank) predecessor(x *node) *node {
 	return y
 }
 
-func (t *RBTreeRank) Len() int {
-	return t.length
-}
-
-func (t *RBTreeRank) NewAscendIterator() *Iterator {
-	return &Iterator{t: t, x: t.minimum(t.root)}
-}
-
-// Rank return 1-based rank or 0 if not exist
-func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
-	n := t.dict[key]
-	if n == nil {
-		return -1
-	}
+func (t *RBTree) getLessCount(n *node) (count int) {
 	x := t.root
 	for x != t.nil {
 		if x == n {
-			if reverse {
-				return t.length - (count + x.left.count)
-			}
-			return count + x.left.count + 1
+			return count + x.left.count
 		}
 		if x.item.Less(n.item) {
 			count += x.count - x.right.count
@@ -443,11 +380,99 @@ func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
 			x = x.left
 		}
 	}
-	return 0
+	return -1
+}
+
+func (t *RBTree) getNodeBySortIndex(index int) *node {
+	x := t.root
+	for x != t.nil {
+		if x.left.count < index {
+			index = index - x.left.count - 1
+			x = x.right
+		} else if x.left.count > index {
+			x = x.left
+		} else {
+			return x
+		}
+	}
+	return x
+}
+
+type RBTreeRank struct {
+	rbTree RBTree
+	dict   map[string]*node
+}
+
+func New() *RBTreeRank {
+	t := &RBTreeRank{
+		rbTree: RBTree{
+			nil:      &node{color: BLACK},
+			freelist: NewFreeList(DefaultFreeListSize),
+		},
+		dict: make(map[string]*node),
+	}
+	t.rbTree.root = t.rbTree.nil
+	return t
+}
+
+func (t *RBTreeRank) Add(key string, item Item) {
+	if item == nil {
+		panic("nil item is not allowed in RBTree")
+	}
+
+	n, ok := t.dict[key]
+	if ok {
+		t.rbTree.delete(key, n)
+	}
+
+	t.dict[key] = t.rbTree.insert(item)
+}
+
+func (t *RBTreeRank) Search(key string) Item {
+	if node, ok := t.dict[key]; ok {
+		return node.item
+	}
+	return nil
+}
+
+func (t *RBTreeRank) Delete(key string) (removeItem Item) {
+	n := t.dict[key]
+	if n == nil {
+		return nil
+	}
+	removeItem = n.item
+	t.rbTree.delete(key, n)
+	delete(t.dict, key)
+	return
+}
+
+func (t *RBTreeRank) Len() int {
+	return t.rbTree.length
+}
+
+func (t *RBTreeRank) NewAscendIterator() *Iterator {
+	return &Iterator{t: &t.rbTree, x: t.rbTree.minimum(t.rbTree.root)}
+}
+
+// Rank return 1-based rank or 0 if not exist
+func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
+	n := t.dict[key]
+	if n == nil {
+		return -1
+	}
+
+	lessCount := t.rbTree.getLessCount(n)
+	if lessCount < 0 {
+		return 0
+	}
+	if reverse {
+		return t.rbTree.length - lessCount
+	}
+	return lessCount + 1
 }
 
 func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
-	llen := t.length
+	llen := t.rbTree.length
 	if start < 0 {
 		start = llen + start
 	}
@@ -470,24 +495,11 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 	var items = make([]Item, 0, count)
 
 	if reverse {
-		start = t.length - 1 - start
-		end = t.length - 1 - end
+		start = t.rbTree.length - 1 - start
+		end = t.rbTree.length - 1 - end
 	}
 
-	x := t.root
-	var startNode *node
-	for x != t.nil {
-		if x.left.count < start {
-			start = start - x.left.count - 1
-			x = x.right
-		} else if x.left.count == start {
-			startNode = x
-			break
-		} else {
-			x = x.left
-		}
-	}
-	it := &Iterator{t: t, x: startNode}
+	it := &Iterator{t: &t.rbTree, x: t.rbTree.getNodeBySortIndex(start)}
 	if reverse {
 		for ; it.Valid(); it.Prev() {
 			items = append(items, it.Value())
@@ -510,116 +522,4 @@ type Int int
 
 func (a Int) Less(b Item) bool {
 	return a < b.(Int)
-}
-
-// PrintTree 打印树
-func PrintTree(t *RBTreeRank) {
-	const (
-		nilStr = "nil"
-		indent = 2
-	)
-	levelNode := make(map[int][]*node)
-	levelNode[0] = []*node{t.root}
-	for level := 0; ; level++ {
-		var nodes = levelNode[level]
-		var next []*node
-		for _, n := range nodes {
-			if n != nil {
-				next = append(next, n.left, n.right)
-			} else {
-				next = append(next, nil, nil)
-			}
-		}
-		var exit = true
-		for _, v := range next {
-			if v != nil {
-				exit = false
-				break
-			}
-		}
-		if exit {
-			break
-		}
-		levelNode[level+1] = next
-	}
-	depth := len(levelNode)
-	for j := 0; j < depth; j++ {
-		w := indent << (depth - 1 - j)
-		if j > 0 {
-			for i := 0; i < 1<<(j-1); i++ {
-				if levelNode[j][i*2] == nil {
-					fmt.Printf("%*c", w*4, ' ')
-				} else {
-					fmt.Printf("%*c", w, ' ') // w
-					if w < 3 {
-						leftW := 3
-						if w == 1 {
-							fmt.Printf("| ")
-						} else {
-							fmt.Printf("/ \\")
-						}
-						leftW -= 3 / w
-						n := w - 3%w + leftW
-						fmt.Printf("%*c", n, ' ')
-					} else {
-						fmt.Printf("%c", ' ')
-						for k := 0; k < w-3; k++ {
-							fmt.Printf("_")
-						}
-						fmt.Printf("/ \\")
-						for k := 0; k < w-3; k++ {
-							fmt.Printf("_")
-						}
-						fmt.Printf("%*c", w+2, ' ')
-					}
-				}
-			}
-
-			fmt.Printf("\n")
-			for i := 0; i < 1<<(j-1); i++ {
-				if levelNode[j][i*2] == nil {
-					fmt.Printf("%*c", w*4, ' ')
-				} else {
-					if w < 3 {
-						fmt.Printf("%*c%*c%*c", w, '/', w*2, '\\', w, ' ')
-					} else {
-						fmt.Printf("%*c%*c%*c", w+1, '/', w*2-2, '\\', w+1, ' ')
-					}
-				}
-			}
-			fmt.Printf("\n")
-		}
-		for i := 0; i < 1<<j; i++ {
-			n := levelNode[j][i]
-			if n == nil {
-				fmt.Printf("%*c", w*2, ' ')
-				continue
-			}
-			key := fmt.Sprintf("%v", n.item)
-			if n.item == nil {
-				key = nilStr
-			}
-			shiftLeft := (len(key) + 1) / 2
-			if w < 3 {
-				if i%2 == 0 || len(key) > 2 {
-					shiftLeft = (len(key))/2 + 1
-				} else {
-					shiftLeft = (len(key) + 1) / 2
-				}
-			}
-			if shiftLeft > w {
-				shiftLeft = w
-			}
-			if w > shiftLeft {
-				fmt.Printf("%*c", w-shiftLeft, ' ') // (key)
-			}
-			if n.color == RED {
-				fmt.Printf("%c[1;41;37m%v%c[0m", 0x1B, key, 0x1B)
-			} else {
-				fmt.Printf("%c[1;40;37m%v%c[0m", 0x1B, key, 0x1B)
-			}
-			fmt.Printf("%*c", w-(len(key)-shiftLeft), ' ')
-		}
-		fmt.Printf("\n")
-	}
 }
