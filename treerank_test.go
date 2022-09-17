@@ -8,8 +8,17 @@ import (
 	"time"
 )
 
-func (a Int) Key() string {
-	return strconv.Itoa(int(a))
+type TestRank struct {
+	member string
+	score  int
+}
+
+func (a TestRank) Key() string {
+	return a.member
+}
+
+func (a TestRank) Less(than Item) bool {
+	return a.score < than.(TestRank).score
 }
 
 func init() {
@@ -18,10 +27,13 @@ func init() {
 }
 
 // perm returns a random permutation of n Int items in the range [0, n).
-func perm(n int) (out []Int) {
-	out = make([]Int, 0, n)
+func perm(n int) (out []TestRank) {
+	out = make([]TestRank, 0, n)
 	for _, v := range rand.Perm(n) {
-		out = append(out, Int(v))
+		out = append(out, TestRank{
+			member: strconv.Itoa(v),
+			score:  v,
+		})
 	}
 	return
 }
@@ -29,7 +41,20 @@ func perm(n int) (out []Int) {
 // rang returns an ordered list of Int items in the range [0, n).
 func rang(n int) (out []Item) {
 	for i := 0; i < n; i++ {
-		out = append(out, Int(i))
+		out = append(out, TestRank{
+			member: strconv.Itoa(i),
+			score:  i,
+		})
+	}
+	return
+}
+
+func revrang(n int, count int) (out []Item) {
+	for i := n - 1; i >= n-count; i-- {
+		out = append(out, TestRank{
+			member: strconv.Itoa(i),
+			score:  i,
+		})
 	}
 	return
 }
@@ -41,14 +66,14 @@ func TestRBtreeRank(t *testing.T) {
 		for _, v := range perm(treeSize) {
 			tr.Add(v.Key(), v)
 		}
-		if tr.Len() != treeSize {
-			t.Errorf("Len is %v, but need %v", treeSize, tr.Len())
+		if tr.Length() != treeSize {
+			t.Errorf("Length is %v, but need %v", treeSize, tr.Length())
 		}
 		for _, v := range perm(treeSize) {
-			if r := tr.Rank(v.Key(), false); r != int(v)+1 {
+			if r := tr.Rank(v.Key(), false); r != v.score+1 {
 				t.Error("rank failed")
 			}
-			if r := tr.Rank(v.Key(), true); r != int(treeSize-v) {
+			if r := tr.Rank(v.Key(), true); r != int(treeSize-v.score) {
 				t.Error("rank failed")
 			}
 		}
@@ -57,15 +82,15 @@ func TestRBtreeRank(t *testing.T) {
 			t.Error("range error")
 		}
 
-		if r := tr.Range(0, 1, true); r[0] != Int(treeSize-1) || r[1] != Int(treeSize-2) {
+		if r := tr.Range(0, 1, true); !reflect.DeepEqual(r, revrang(treeSize, 2)) {
 			t.Error("range error")
 		}
 
 		for i := 0; i < treeSize/2; i++ {
-			tr.Delete(Int(i).Key())
+			tr.Remove(strconv.Itoa(i))
 		}
 		for i := treeSize + 1; i < treeSize; i++ {
-			if r := tr.Rank(Int(i).Key(), false); r != i-treeSize/2 {
+			if r := tr.Rank(strconv.Itoa(i), false); r != i-treeSize/2 {
 				t.Error("rank failed")
 			}
 		}
@@ -75,16 +100,6 @@ func TestRBtreeRank(t *testing.T) {
 const benchmarkTreeSize = 10000
 
 func BenchmarkAdd(b *testing.B) {
-	zs := New()
-	items := perm(benchmarkTreeSize)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		item := items[i%benchmarkTreeSize]
-		zs.Add(item.Key(), item)
-	}
-}
-
-func BenchmarkInsert(b *testing.B) {
 	b.StopTimer()
 	insertP := perm(benchmarkTreeSize)
 	b.StartTimer()
@@ -100,22 +115,15 @@ func BenchmarkInsert(b *testing.B) {
 		}
 	}
 }
-
-func BenchmarkSearch(b *testing.B) {
+func BenchmarkAddIncrease(b *testing.B) {
 	b.StopTimer()
-	insertP := perm(benchmarkTreeSize)
-	searchP := perm(benchmarkTreeSize)
+	insertP := rang(benchmarkTreeSize)
 	b.StartTimer()
 	i := 0
 	for i < b.N {
-		b.StopTimer()
 		tr := New()
-		for _, v := range insertP {
-			tr.Add(v.Key(), v)
-		}
-		b.StartTimer()
-		for _, item := range searchP {
-			tr.Search(item.Key())
+		for _, item := range insertP {
+			tr.Add(item.(TestRank).Key(), item)
 			i++
 			if i >= b.N {
 				return
@@ -124,7 +132,24 @@ func BenchmarkSearch(b *testing.B) {
 	}
 }
 
-func BenchmarkDeleteInsert(b *testing.B) {
+func BenchmarkAddDecrease(b *testing.B) {
+	b.StopTimer()
+	insertP := revrang(benchmarkTreeSize, benchmarkTreeSize)
+	b.StartTimer()
+	i := 0
+	for i < b.N {
+		tr := New()
+		for _, item := range insertP {
+			tr.Add(item.(TestRank).Key(), item)
+			i++
+			if i >= b.N {
+				return
+			}
+		}
+	}
+}
+
+func BenchmarkRemoveAdd(b *testing.B) {
 	b.StopTimer()
 	insertP := perm(benchmarkTreeSize)
 	tr := New()
@@ -133,13 +158,13 @@ func BenchmarkDeleteInsert(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tr.Delete(insertP[i%benchmarkTreeSize].Key())
+		tr.Remove(insertP[i%benchmarkTreeSize].Key())
 		item := insertP[i%benchmarkTreeSize]
 		tr.Add(item.Key(), item)
 	}
 }
 
-func BenchmarkDelete(b *testing.B) {
+func BenchmarkRemove(b *testing.B) {
 	b.StopTimer()
 	insertP := perm(benchmarkTreeSize)
 	removeP := perm(benchmarkTreeSize)
@@ -153,14 +178,27 @@ func BenchmarkDelete(b *testing.B) {
 		}
 		b.StartTimer()
 		for _, item := range removeP {
-			tr.Delete(item.Key())
+			tr.Remove(item.Key())
 			i++
 			if i >= b.N {
 				return
 			}
 		}
-		if tr.Len() > 0 {
-			panic(tr.Len())
+		if tr.Length() > 0 {
+			b.Error(tr.Length())
 		}
+	}
+}
+
+func BenchmarkRank(b *testing.B) {
+	b.StopTimer()
+	insertP := perm(benchmarkTreeSize)
+	tr := New()
+	for _, v := range insertP {
+		tr.Add(v.Key(), v)
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		tr.Rank(insertP[i%benchmarkTreeSize].Key(), true)
 	}
 }

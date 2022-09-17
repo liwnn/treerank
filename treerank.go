@@ -20,11 +20,11 @@ const (
 
 type node struct {
 	color color
-	item  Item
 	left  *node
 	right *node
 	p     *node
 	count int
+	item  Item
 }
 
 type FreeList struct {
@@ -225,7 +225,7 @@ func (t *RBTree) search(x *node, item Item) *node {
 	return x
 }
 
-func (t *RBTree) delete(key string, z *node) {
+func (t *RBTree) delete(z *node) {
 	var y = z
 	yOriginalColor := y.color
 	var x *node
@@ -249,7 +249,7 @@ func (t *RBTree) delete(key string, z *node) {
 			p.count--
 		}
 		if y.p == z {
-			x.p = y // t.nil
+			x.p = y // x maybe t.nil, reassign p to y.
 		} else {
 			t.transplant(y, y.right)
 			y.right = z.right
@@ -266,6 +266,18 @@ func (t *RBTree) delete(key string, z *node) {
 	if yOriginalColor == BLACK {
 		t.deleteFixup(x)
 	}
+}
+
+func (t *RBTree) updateItem(x *node, item Item) bool {
+	successor := t.successor(x)
+	if successor == t.nil || !successor.item.Less(item) {
+		predecessor := t.predecessor(x)
+		if predecessor == t.nil || !item.Less(predecessor.item) {
+			x.item = item
+			return true
+		}
+	}
+	return false
 }
 
 func (t *RBTree) minimum(x *node) *node {
@@ -423,28 +435,33 @@ func (t *RBTreeRank) Add(key string, item Item) {
 
 	n, ok := t.dict[key]
 	if ok {
-		t.rbTree.delete(key, n)
+		if t.rbTree.updateItem(n, item) {
+			return
+		}
+		t.rbTree.delete(n)
 	}
 
 	t.dict[key] = t.rbTree.insert(item)
 }
 
-func (t *RBTreeRank) Search(key string) Item {
-	if node, ok := t.dict[key]; ok {
-		return node.item
-	}
-	return nil
-}
-
-func (t *RBTreeRank) Delete(key string) (removeItem Item) {
+// Remove the element 'ele' from the rank.
+func (t *RBTreeRank) Remove(key string) (removeItem Item) {
 	n := t.dict[key]
 	if n == nil {
 		return nil
 	}
 	removeItem = n.item
-	t.rbTree.delete(key, n)
+	t.rbTree.delete(n)
 	delete(t.dict, key)
 	return
+}
+
+// Get return Item in dict.
+func (t *RBTreeRank) Get(key string) Item {
+	if node, ok := t.dict[key]; ok {
+		return node.item
+	}
+	return nil
 }
 
 // Rank return 1-based rank or 0 if not exist
@@ -511,7 +528,7 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 	return items
 }
 
-func (t *RBTreeRank) Len() int {
+func (t *RBTreeRank) Length() int {
 	return t.rbTree.root.count
 }
 
