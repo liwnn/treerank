@@ -62,7 +62,6 @@ type RBTree struct {
 	root     *node
 	nil      *node
 	freelist *FreeList
-	length   int
 }
 
 //	 x               y
@@ -153,7 +152,6 @@ func (t *RBTree) insert(item Item) *node {
 	z.right = t.nil
 	z.color = RED
 	z.count = 1
-	t.length++
 
 	for p := z.p; p != t.nil; p = p.p {
 		p.count++
@@ -263,7 +261,6 @@ func (t *RBTree) delete(key string, z *node) {
 		y.color = z.color
 		y.count = z.count
 	}
-	t.length--
 	t.freelist.freeNode(z)
 
 	if yOriginalColor == BLACK {
@@ -283,6 +280,10 @@ func (t *RBTree) maximum(x *node) *node {
 		x = x.right
 	}
 	return x
+}
+
+func (t *RBTree) length() int {
+	return t.root.count
 }
 
 func (t *RBTree) deleteFixup(x *node) {
@@ -446,14 +447,6 @@ func (t *RBTreeRank) Delete(key string) (removeItem Item) {
 	return
 }
 
-func (t *RBTreeRank) Len() int {
-	return t.rbTree.length
-}
-
-func (t *RBTreeRank) NewAscendIterator() *Iterator {
-	return &Iterator{t: &t.rbTree, x: t.rbTree.minimum(t.rbTree.root)}
-}
-
 // Rank return 1-based rank or 0 if not exist
 func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
 	n := t.dict[key]
@@ -466,13 +459,13 @@ func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
 		return 0
 	}
 	if reverse {
-		return t.rbTree.length - lessCount
+		return t.rbTree.length() - lessCount
 	}
 	return lessCount + 1
 }
 
 func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
-	llen := t.rbTree.length
+	llen := t.rbTree.length()
 	if start < 0 {
 		start = llen + start
 	}
@@ -495,8 +488,8 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 	var items = make([]Item, 0, count)
 
 	if reverse {
-		start = t.rbTree.length - 1 - start
-		end = t.rbTree.length - 1 - end
+		start = t.rbTree.length() - 1 - start
+		end = t.rbTree.length() - 1 - end
 	}
 
 	it := &Iterator{t: &t.rbTree, x: t.rbTree.getNodeBySortIndex(start)}
@@ -516,6 +509,14 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 		}
 	}
 	return items
+}
+
+func (t *RBTreeRank) Len() int {
+	return t.rbTree.root.count
+}
+
+func (t *RBTreeRank) NewAscendIterator() *Iterator {
+	return &Iterator{t: &t.rbTree, x: t.rbTree.minimum(t.rbTree.root)}
 }
 
 type Int int
