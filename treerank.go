@@ -10,6 +10,10 @@ type Item interface {
 	Less(than Item) bool
 }
 
+// ItemIterator allows callers of Range* to iterate of the zset.
+// When this function returns false, iteration will stop.
+type ItemIterator func(key string, i Item, rank int) bool
+
 type color int8
 
 // enum
@@ -24,6 +28,7 @@ type node struct {
 	right *node
 	p     *node
 	count int
+	key   string
 	item  Item
 }
 
@@ -36,10 +41,10 @@ func NewFreeList(size int) *FreeList {
 }
 
 func (f *FreeList) newNode() (n *node) {
-	index := len(f.freelist) - 1
-	if index < 0 {
+	if len(f.freelist) == 0 {
 		return new(node)
 	}
+	index := len(f.freelist) - 1
 	n = f.freelist[index]
 	f.freelist[index] = nil
 	f.freelist = f.freelist[:index]
@@ -124,7 +129,7 @@ func (t *RBTree) rightRotate(y *node) {
 	y.p = x
 }
 
-func (t *RBTree) insert(item Item) *node {
+func (t *RBTree) insert(key string, item Item) *node {
 	y := t.nil
 	insertLeft := true
 	for x := t.root; x != t.nil; {
@@ -139,6 +144,7 @@ func (t *RBTree) insert(item Item) *node {
 	}
 
 	z := t.freelist.newNode()
+	z.key = key
 	z.item = item
 	z.p = y
 	if y == t.nil {
@@ -441,7 +447,7 @@ func (t *RBTreeRank) Add(key string, item Item) {
 		t.rbTree.delete(n)
 	}
 
-	t.dict[key] = t.rbTree.insert(item)
+	t.dict[key] = t.rbTree.insert(key, item)
 }
 
 // Remove the element 'ele' from the rank.
@@ -481,7 +487,7 @@ func (t *RBTreeRank) Rank(key string, reverse bool) (count int) {
 	return lessCount + 1
 }
 
-func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
+func (t *RBTreeRank) Range(start, end int, reverse bool, iterator ItemIterator) {
 	llen := t.rbTree.length()
 	if start < 0 {
 		start = llen + start
@@ -494,7 +500,7 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 	}
 
 	if start > end || start >= llen {
-		return nil
+		return
 	}
 
 	if end >= llen {
@@ -502,30 +508,65 @@ func (t *RBTreeRank) Range(start, end int, reverse bool) []Item {
 	}
 
 	var count = end - start + 1
-	var items = make([]Item, 0, count)
-
 	if reverse {
-		start = t.rbTree.length() - 1 - start
-		end = t.rbTree.length() - 1 - end
-	}
-
-	it := &Iterator{t: &t.rbTree, x: t.rbTree.getNodeBySortIndex(start)}
-	if reverse {
-		for ; it.Valid(); it.Prev() {
-			items = append(items, it.Value())
-			if len(items) >= count {
+		// end = t.rbTree.length() - 1 - end
+		x := t.rbTree.getNodeBySortIndex(t.rbTree.length() - 1 - start)
+		for i := 1; i <= count; i++ {
+			if iterator(x.key, x.item, start+i) {
+				x = t.rbTree.predecessor(x)
+			} else {
 				break
 			}
 		}
+
 	} else {
-		for ; it.Valid(); it.Next() {
-			items = append(items, it.Value())
-			if len(items) >= count {
+		x := t.rbTree.getNodeBySortIndex(start)
+		for i := 1; i <= count; i++ {
+			if iterator(x.key, x.item, start+i) {
+				x = t.rbTree.successor(x)
+			} else {
 				break
 			}
 		}
 	}
-	return items
+}
+
+// RangeIterator return iterator for visit elements in [start, end].
+// It is slower than Range.
+func (t *RBTreeRank) RangeIterator(start, end int, reverse bool) RangeIterator {
+	llen := t.rbTree.length()
+	if start < 0 {
+		start = llen + start
+	}
+	if end < 0 {
+		end = llen + end
+	}
+	if start < 0 {
+		start = 0
+	}
+
+	if start > end || start >= llen {
+		return RangeIterator{end: -1}
+	}
+
+	if end >= llen {
+		end = llen - 1
+	}
+
+	var n *node
+	if reverse {
+		n = t.rbTree.getNodeBySortIndex(t.rbTree.length() - 1 - start)
+	} else {
+		n = t.rbTree.getNodeBySortIndex(start)
+	}
+	return RangeIterator{
+		t:       &t.rbTree,
+		start:   start,
+		cur:     start,
+		end:     end,
+		node:    n,
+		reverse: reverse,
+	}
 }
 
 func (t *RBTreeRank) Length() int {

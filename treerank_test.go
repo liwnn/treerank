@@ -77,12 +77,21 @@ func TestRBtreeRank(t *testing.T) {
 				t.Error("rank failed")
 			}
 		}
-
-		if r := tr.Range(0, 1, false); !reflect.DeepEqual(r, rang(2)) {
+		var r []Item
+		tr.Range(0, 1, false, func(_ string, item Item, _ int) bool {
+			r = append(r, item)
+			return true
+		})
+		if !reflect.DeepEqual(r, rang(2)) {
 			t.Error("range error")
 		}
 
-		if r := tr.Range(0, 1, true); !reflect.DeepEqual(r, revrang(treeSize, 2)) {
+		r = r[:0]
+		tr.Range(0, 1, true, func(_ string, item Item, _ int) bool {
+			r = append(r, item)
+			return true
+		})
+		if !reflect.DeepEqual(r, revrang(treeSize, 2)) {
 			t.Error("range error")
 		}
 
@@ -200,5 +209,33 @@ func BenchmarkRank(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tr.Rank(insertP[i%benchmarkTreeSize].Key(), true)
+	}
+}
+
+func BenchmarkRange(b *testing.B) {
+	insertP := perm(benchmarkTreeSize)
+	tr := New()
+	for _, item := range insertP {
+		tr.Add(item.Key(), item)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		tr.Range(0, 100, true, func(key string, i Item, rank int) bool {
+			return true
+		})
+	}
+}
+
+func BenchmarkRangeIterator(b *testing.B) {
+	insertP := perm(benchmarkTreeSize)
+	tr := New()
+	for _, item := range insertP {
+		tr.Add(item.Key(), item)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		it := tr.RangeIterator(0, 100, true)
+		for ; it.Valid(); it.Next() {
+		}
 	}
 }

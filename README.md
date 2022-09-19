@@ -41,13 +41,13 @@ func main() {
 	fmt.Printf("Hurst's rank is %v\n", rank) // expected 2
 
 	// Range
-	rg := tr.Range(0, 3, true)
-	for i, v := range rg {
-		fmt.Printf("%v's rank is %v\n", v.(User).Name, i+1)
-	}
+	tr.Range(0, 3, true, func(key string, v treerank.Item, rank int) bool {
+		fmt.Printf("%v's rank is %v\n", v.(User).Name, rank)
+		return true
+	})
 
-	// Delete
-	tr.Delete("Peek")
+	// Remove
+	tr.Remove("Peek")
 
 	// Rank
 	rank = tr.Rank("Hurst", true)
